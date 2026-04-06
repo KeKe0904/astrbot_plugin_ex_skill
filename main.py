@@ -9,7 +9,7 @@ import platform
 import time
 import re
 
-@register("astrbot_plugin_ex_skill", "落梦陳", "把前任蒸馏成 AI Skill，用ta的方式跟你说话", "2.1.3")
+@register("astrbot_plugin_ex_skill", "落梦陳", "把前任蒸馏成 AI Skill，用ta的方式跟你说话", "2.1.5")
 class ExSkillPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -188,7 +188,7 @@ class ExSkillPlugin(Star):
             logger.error(f"  ❌ 检查平台支持失败: {e}")
 
     @filter.command("create-ex")
-    async def create_ex(self, event: AstrMessageEvent, *args):
+    async def create_ex(self, event: AstrMessageEvent):
         """创建前任 Skill"""
         try:
             user_id = event.get_sender_id()
@@ -200,64 +200,69 @@ class ExSkillPlugin(Star):
                 yield event.plain_result(f"已达到最大前任 Skill 数量限制 ({self.max_exes})，请先删除一些再创建。")
                 return
             
-            # 处理命令参数
-            if not args:
-                yield event.plain_result("请输入前任信息，格式：/create-ex 她叫陳 在一起5年 ENFP 处女座")
-                return
-            
-            # 解析参数
-            info = " ".join(args)
-            logger.info(f"解析创建命令参数: {info}")
-            
-            # 提取信息
-            # 格式：/create-ex 她叫XX 在一起X年 XX 星座
-            parts = info.split()
-            slug = ""
-            basic_info = ""
-            personality = ""
-            data_source = ""
-            
-            for i, part in enumerate(parts):
-                if part.startswith("她叫"):
-                    slug = part[2:]
-                elif part.startswith("在一起") and "年" in part:
-                    basic_info = part
-                elif part in ["ENFP", "INTJ", "INFP", "ENTJ", "INTP", "ENTP", "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"]:
-                    personality = part
-                elif part in ["白羊座", "金牛座", "双子座", "巨蟹座", "狮子座", "处女座", "天秤座", "天蝎座", "射手座", "摩羯座", "水瓶座", "双鱼座"]:
-                    if personality:
-                        personality += " " + part
-                    else:
+            # 提取消息内容
+            message = event.message_str.strip()
+            # 移除命令前缀，获取参数
+            if message.startswith("/create-ex"):
+                info = message[len("/create-ex"):].strip()
+                
+                if not info:
+                    yield event.plain_result("请输入前任信息，格式：/create-ex 她叫陳 在一起5年 ENFP 处女座")
+                    return
+                
+                logger.info(f"解析创建命令参数: {info}")
+                
+                # 提取信息
+                # 格式：/create-ex 她叫XX 在一起X年 XX 星座
+                parts = info.split()
+                slug = ""
+                basic_info = ""
+                personality = ""
+                data_source = ""
+                
+                for i, part in enumerate(parts):
+                    if part.startswith("她叫"):
+                        slug = part[2:]
+                    elif part.startswith("在一起") and "年" in part:
+                        basic_info = part
+                    elif part in ["ENFP", "INTJ", "INFP", "ENTJ", "INTP", "ENTP", "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"]:
                         personality = part
-            
-            # 清理 slug，确保它是有效的目录名
-            if not slug:
-                slug = f"ex_{int(time.time())}"
+                    elif part in ["白羊座", "金牛座", "双子座", "巨蟹座", "狮子座", "处女座", "天秤座", "天蝎座", "射手座", "摩羯座", "水瓶座", "双鱼座"]:
+                        if personality:
+                            personality += " " + part
+                        else:
+                            personality = part
+                
+                # 清理 slug，确保它是有效的目录名
+                if not slug:
+                    slug = f"ex_{int(time.time())}"
+                else:
+                    slug = re.sub(r'[^a-zA-Z0-9_-]', '_', slug)
+                
+                # 准备数据
+                data = {
+                    "slug": slug,
+                    "basic_info": basic_info,
+                    "personality": personality,
+                    "data_source": data_source
+                }
+                
+                # 生成 Skill
+                yield event.plain_result("正在生成前任 Skill...")
+                logger.info(f"开始生成前任 Skill，数据: {data}")
+                success = await self._generate_skill(data)
+                
+                if success:
+                    logger.info(f"前任 Skill 生成成功: {slug}")
+                    yield event.plain_result(f"前任 Skill 创建成功！")
+                    yield event.plain_result(f"使用 /wake-ex {slug} 命令唤醒前任进行持续对话。")
+                    yield event.plain_result(f"使用 /{slug} 消息内容 进行一次性对话。")
+                    yield event.plain_result(f"使用 /list-exes 查看所有已创建的前任 Skill。")
+                else:
+                    logger.error("生成前任 Skill 失败")
+                    yield event.plain_result("生成前任 Skill 时发生错误，请稍后重试。")
             else:
-                slug = re.sub(r'[^a-zA-Z0-9_-]', '_', slug)
-            
-            # 准备数据
-            data = {
-                "slug": slug,
-                "basic_info": basic_info,
-                "personality": personality,
-                "data_source": data_source
-            }
-            
-            # 生成 Skill
-            yield event.plain_result("正在生成前任 Skill...")
-            logger.info(f"开始生成前任 Skill，数据: {data}")
-            success = await self._generate_skill(data)
-            
-            if success:
-                logger.info(f"前任 Skill 生成成功: {slug}")
-                yield event.plain_result(f"前任 Skill 创建成功！")
-                yield event.plain_result(f"使用 /wake-ex {slug} 命令唤醒前任进行持续对话。")
-                yield event.plain_result(f"使用 /{slug} 消息内容 进行一次性对话。")
-                yield event.plain_result(f"使用 /list-exes 查看所有已创建的前任 Skill。")
-            else:
-                logger.error("生成前任 Skill 失败")
-                yield event.plain_result("生成前任 Skill 时发生错误，请稍后重试。")
+                yield event.plain_result("请使用正确的格式：/create-ex 她叫陳 在一起5年 ENFP 处女座")
         except Exception as e:
             logger.error(f"创建前任 Skill 失败: {e}")
             yield event.plain_result("创建前任 Skill 时发生错误，请稍后重试。")
@@ -270,84 +275,104 @@ class ExSkillPlugin(Star):
             for item in self.exes_dir.iterdir():
                 if item.is_dir():
                     exes.append(item.name)
+            
             if exes:
-                yield event.plain_result("已创建的前任 Skill：")
+                yield event.plain_result(f"已创建的前任 Skill ({len(exes)}):")
                 for ex in exes:
                     yield event.plain_result(f"- {ex}")
             else:
-                yield event.plain_result("还没有创建任何前任 Skill，使用 /create-ex 开始创建。")
+                yield event.plain_result("还没有创建任何前任 Skill")
         except Exception as e:
             logger.error(f"列出前任 Skill 失败: {e}")
             yield event.plain_result("列出前任 Skill 时发生错误，请稍后重试。")
 
     @filter.command("delete-ex")
-    async def delete_ex(self, event: AstrMessageEvent, slug: str):
+    async def delete_ex(self, event: AstrMessageEvent):
         """删除前任 Skill"""
         try:
-            if not slug:
-                yield event.plain_result("请指定要删除的前任 Skill 代号，例如：/delete-ex first-love")
-                return
-            ex_dir = self.exes_dir / slug
-            if ex_dir.exists():
-                # 自动备份
-                if self.auto_backup:
-                    backup_dir = self.plugin_dir / "backups"
-                    backup_dir.mkdir(exist_ok=True)
-                    backup_path = backup_dir / f"{slug}_{int(os.time())}"
-                    try:
-                        shutil.copytree(ex_dir, backup_path)
-                        if self.enable_logging:
-                            logger.info(f"已备份前任 Skill 到: {backup_path}")
-                    except Exception as backup_err:
-                        logger.error(f"备份失败: {backup_err}")
-                # 删除
-                shutil.rmtree(ex_dir)
-                yield event.plain_result(f"已删除前任 Skill: {slug}")
-                if self.auto_backup:
-                    yield event.plain_result("（已自动备份）")
+            # 提取消息内容
+            message = event.message_str.strip()
+            # 移除命令前缀，获取参数
+            if message.startswith("/delete-ex"):
+                info = message[len("/delete-ex"):].strip()
+                
+                if not info:
+                    yield event.plain_result("请指定要删除的前任 Skill 代号，例如：/delete-ex first-love")
+                    return
+                
+                slug = info.split()[0]
+                
+                ex_dir = self.exes_dir / slug
+                if ex_dir.exists():
+                    # 自动备份
+                    if self.auto_backup:
+                        backup_dir = self.plugin_dir / "backups"
+                        backup_dir.mkdir(exist_ok=True)
+                        backup_path = backup_dir / f"{slug}_{int(time.time())}"
+                        try:
+                            shutil.copytree(ex_dir, backup_path)
+                            if self.enable_logging:
+                                logger.info(f"已备份前任 Skill 到: {backup_path}")
+                        except Exception as backup_err:
+                            logger.error(f"备份失败: {backup_err}")
+                    # 删除
+                    shutil.rmtree(ex_dir)
+                    yield event.plain_result(f"已删除前任 Skill: {slug}")
+                    if self.auto_backup:
+                        yield event.plain_result("（已自动备份）")
+                else:
+                    yield event.plain_result(f"未找到前任 Skill: {slug}")
             else:
-                yield event.plain_result(f"未找到前任 Skill: {slug}")
+                yield event.plain_result("请使用正确的格式：/delete-ex first-love")
         except Exception as e:
             logger.error(f"删除前任 Skill 失败: {e}")
             yield event.plain_result("删除前任 Skill 时发生错误，请稍后重试。")
 
     @filter.command("let-go")
-    async def let_go(self, event: AstrMessageEvent, slug: str):
+    async def let_go(self, event: AstrMessageEvent):
         """放下前任（删除的温柔别名）"""
         try:
-            if not slug:
-                yield event.plain_result("请指定要放下的前任 Skill 代号，例如：/let-go first-love")
-                return
-            await self.delete_ex(event, slug)
+            # 直接调用 delete_ex 方法
+            await self.delete_ex(event)
         except Exception as e:
             logger.error(f"放下前任失败: {e}")
             yield event.plain_result("放下前任时发生错误，请稍后重试。")
 
     @filter.command("wake-ex")
-    async def wake_ex(self, event: AstrMessageEvent, slug: str):
+    async def wake_ex(self, event: AstrMessageEvent):
         """唤醒指定的前任进行对话"""
         try:
-            if not slug:
-                yield event.plain_result("请指定要唤醒的前任 Skill 代号，例如：/wake-ex first-love")
-                return
-            
-            # 检查 slug 是否存在
-            skill_dir = self.exes_dir / slug
-            if not skill_dir.exists() or not skill_dir.is_dir():
-                yield event.plain_result(f"未找到前任 Skill: {slug}\n使用 /list-exes 查看所有已创建的前任 Skill。")
-                return
-            
-            # 设置活跃的前任 Skill
-            user_id = event.get_sender_id()
-            self.active_exes[user_id] = slug
-            
-            logger.info(f"已唤醒前任 {slug} 给用户 {user_id}")
-            logger.info(f"当前活跃前任: {self.active_exes}")
-            
-            # 唤醒前任，提示用户可以开始对话
-            yield event.plain_result(f"已唤醒前任: {slug}")
-            yield event.plain_result("现在你可以直接与ta对话，不需要使用指令。")
-            yield event.plain_result("输入 '退出对话' 可以退出与前任的对话。")
+            # 提取消息内容
+            message = event.message_str.strip()
+            # 移除命令前缀，获取参数
+            if message.startswith("/wake-ex"):
+                info = message[len("/wake-ex"):].strip()
+                
+                if not info:
+                    yield event.plain_result("请指定要唤醒的前任 Skill 代号，例如：/wake-ex first-love")
+                    return
+                
+                slug = info.split()[0]
+                
+                # 检查 slug 是否存在
+                skill_dir = self.exes_dir / slug
+                if not skill_dir.exists() or not skill_dir.is_dir():
+                    yield event.plain_result(f"未找到前任 Skill: {slug}\n使用 /list-exes 查看所有已创建的前任 Skill。")
+                    return
+                
+                # 设置活跃的前任 Skill
+                user_id = event.get_sender_id()
+                self.active_exes[user_id] = slug
+                
+                logger.info(f"已唤醒前任 {slug} 给用户 {user_id}")
+                logger.info(f"当前活跃前任: {self.active_exes}")
+                
+                # 唤醒前任，提示用户可以开始对话
+                yield event.plain_result(f"已唤醒前任: {slug}")
+                yield event.plain_result("现在你可以直接与ta对话，不需要使用指令。")
+                yield event.plain_result("输入 '退出对话' 可以退出与前任的对话。")
+            else:
+                yield event.plain_result("请使用正确的格式：/wake-ex first-love")
         except Exception as e:
             logger.error(f"唤醒前任失败: {e}")
             yield event.plain_result("唤醒前任时发生错误，请稍后重试。")

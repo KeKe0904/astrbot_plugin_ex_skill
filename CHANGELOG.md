@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.5] - 2026-04-06
+
+### Fixed
+- 修改所有命令处理函数，移除args参数，使用空参数列表
+- 确保所有命令都通过解析消息内容获取参数
+- 修复了"_empty() takes no arguments"错误
+
+## [2.1.4] - 2026-04-06
+
+### Fixed
+- 修改所有命令处理函数的参数格式，以符合ASTRBOT的要求
+- 确保单独发送 /create-ex 时返回正确的格式示例
+
 ## [2.1.3] - 2026-04-06
 
 ### Added
