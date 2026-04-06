@@ -3,7 +3,7 @@ display_name: 前任 Skill # 用于展示的名字，可以是方便人类阅读
 desc: 把前任蒸馏成 AI Skill，用ta的方式跟你说话 # 插件简短描述
 version: v1.0.0 # 插件版本号。格式：v1.1.1 或者 v1.1
 author: 落梦陳 # 作者
-repo: https://github.com/therealXiaomanChu/ex-skill # 插件的仓库地址
+repo: https://github.com/KeKe0904/astrbot_plugin_ex_skill # 插件的仓库地址
 support_platforms:
   - telegram
   - discord

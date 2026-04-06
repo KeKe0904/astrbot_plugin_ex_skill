@@ -20,7 +20,7 @@ class ExSkillPlugin(Star):
         logger.info("ExSkill 插件初始化完成")
 
     @filter.command("create-ex")
-    async def create_ex(self, event: AstrMessageEvent):
+    async def create_ex(self, event: AstrMessageEvent, *args, **kwargs):
         """创建前任 Skill"""
         user_name = event.get_sender_name()
         yield event.plain_result(f"{user_name}，开始创建前任 Skill。请按照提示输入信息：")
@@ -31,7 +31,7 @@ class ExSkillPlugin(Star):
         yield event.plain_result("所有字段均可跳过，仅凭描述也能生成。")
 
     @filter.command("list-exes")
-    async def list_exes(self, event: AstrMessageEvent):
+    async def list_exes(self, event: AstrMessageEvent, *args, **kwargs):
         """列出所有前任 Skill"""
         exes = []
         for item in self.exes_dir.iterdir():
@@ -45,8 +45,13 @@ class ExSkillPlugin(Star):
             yield event.plain_result("还没有创建任何前任 Skill，使用 /create-ex 开始创建。")
 
     @filter.command("delete-ex")
-    async def delete_ex(self, event: AstrMessageEvent, slug: str):
+    async def delete_ex(self, event: AstrMessageEvent, slug: str = None, *args, **kwargs):
         """删除前任 Skill"""
+        if not slug and args:
+            slug = args[0]
+        if not slug:
+            yield event.plain_result("请指定要删除的前任 Skill 代号，例如：/delete-ex first-love")
+            return
         ex_dir = self.exes_dir / slug
         if ex_dir.exists():
             shutil.rmtree(ex_dir)
@@ -55,8 +60,13 @@ class ExSkillPlugin(Star):
             yield event.plain_result(f"未找到前任 Skill: {slug}")
 
     @filter.command("let-go")
-    async def let_go(self, event: AstrMessageEvent, slug: str):
+    async def let_go(self, event: AstrMessageEvent, slug: str = None, *args, **kwargs):
         """放下前任（删除的温柔别名）"""
+        if not slug and args:
+            slug = args[0]
+        if not slug:
+            yield event.plain_result("请指定要放下的前任 Skill 代号，例如：/let-go first-love")
+            return
         await self.delete_ex(event, slug)
 
     async def terminate(self):
