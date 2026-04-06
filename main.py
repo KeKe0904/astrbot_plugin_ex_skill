@@ -9,7 +9,7 @@ import platform
 import time
 import re
 
-@register("astrbot_plugin_ex_skill", "落梦陳", "把前任蒸馏成 AI Skill，用ta的方式跟你说话", "2.1.0")
+@register("astrbot_plugin_ex_skill", "落梦陳", "把前任蒸馏成 AI Skill，用ta的方式跟你说话", "2.1.3")
 class ExSkillPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -188,7 +188,7 @@ class ExSkillPlugin(Star):
             logger.error(f"  ❌ 检查平台支持失败: {e}")
 
     @filter.command("create-ex")
-    async def create_ex(self, event: AstrMessageEvent):
+    async def create_ex(self, event: AstrMessageEvent, *args):
         """创建前任 Skill"""
         try:
             user_id = event.get_sender_id()
@@ -200,11 +200,64 @@ class ExSkillPlugin(Star):
                 yield event.plain_result(f"已达到最大前任 Skill 数量限制 ({self.max_exes})，请先删除一些再创建。")
                 return
             
-            # 一次性提示所有需要的信息
-            yield event.plain_result(f"{user_name} 开始创建前任 Skill。请按照以下格式输入信息：")
-            yield event.plain_result("格式：前任名字|基本信息|性格画像|数据源")
-            yield event.plain_result("示例：初恋|在一起三年，大学时期|ENFP，双子座，话痨|微信聊天记录")
-            yield event.plain_result("提示：所有字段均可跳过，跳过的字段留空即可，例如：初恋||ENFP，双子座，话痨|")
+            # 处理命令参数
+            if not args:
+                yield event.plain_result("请输入前任信息，格式：/create-ex 她叫陳 在一起5年 ENFP 处女座")
+                return
+            
+            # 解析参数
+            info = " ".join(args)
+            logger.info(f"解析创建命令参数: {info}")
+            
+            # 提取信息
+            # 格式：/create-ex 她叫XX 在一起X年 XX 星座
+            parts = info.split()
+            slug = ""
+            basic_info = ""
+            personality = ""
+            data_source = ""
+            
+            for i, part in enumerate(parts):
+                if part.startswith("她叫"):
+                    slug = part[2:]
+                elif part.startswith("在一起") and "年" in part:
+                    basic_info = part
+                elif part in ["ENFP", "INTJ", "INFP", "ENTJ", "INTP", "ENTP", "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"]:
+                    personality = part
+                elif part in ["白羊座", "金牛座", "双子座", "巨蟹座", "狮子座", "处女座", "天秤座", "天蝎座", "射手座", "摩羯座", "水瓶座", "双鱼座"]:
+                    if personality:
+                        personality += " " + part
+                    else:
+                        personality = part
+            
+            # 清理 slug，确保它是有效的目录名
+            if not slug:
+                slug = f"ex_{int(time.time())}"
+            else:
+                slug = re.sub(r'[^a-zA-Z0-9_-]', '_', slug)
+            
+            # 准备数据
+            data = {
+                "slug": slug,
+                "basic_info": basic_info,
+                "personality": personality,
+                "data_source": data_source
+            }
+            
+            # 生成 Skill
+            yield event.plain_result("正在生成前任 Skill...")
+            logger.info(f"开始生成前任 Skill，数据: {data}")
+            success = await self._generate_skill(data)
+            
+            if success:
+                logger.info(f"前任 Skill 生成成功: {slug}")
+                yield event.plain_result(f"前任 Skill 创建成功！")
+                yield event.plain_result(f"使用 /wake-ex {slug} 命令唤醒前任进行持续对话。")
+                yield event.plain_result(f"使用 /{slug} 消息内容 进行一次性对话。")
+                yield event.plain_result(f"使用 /list-exes 查看所有已创建的前任 Skill。")
+            else:
+                logger.error("生成前任 Skill 失败")
+                yield event.plain_result("生成前任 Skill 时发生错误，请稍后重试。")
         except Exception as e:
             logger.error(f"创建前任 Skill 失败: {e}")
             yield event.plain_result("创建前任 Skill 时发生错误，请稍后重试。")
@@ -288,6 +341,9 @@ class ExSkillPlugin(Star):
             user_id = event.get_sender_id()
             self.active_exes[user_id] = slug
             
+            logger.info(f"已唤醒前任 {slug} 给用户 {user_id}")
+            logger.info(f"当前活跃前任: {self.active_exes}")
+            
             # 唤醒前任，提示用户可以开始对话
             yield event.plain_result(f"已唤醒前任: {slug}")
             yield event.plain_result("现在你可以直接与ta对话，不需要使用指令。")
@@ -296,20 +352,25 @@ class ExSkillPlugin(Star):
             logger.error(f"唤醒前任失败: {e}")
             yield event.plain_result("唤醒前任时发生错误，请稍后重试。")
 
-    @filter.event_message_type(filter.EventMessageType.ALL, trigger="command")
+    @filter.event_message_type(filter.EventMessageType.ALL, trigger="auto")
     async def handle_message(self, event: AstrMessageEvent):
         """处理用户消息，实现持续对话和退出功能"""
         try:
             user_id = event.get_sender_id()
             message = event.message_str.strip()
             
+            logger.info(f"收到用户消息: {message}, 用户ID: {user_id}")
+            logger.info(f"当前活跃前任: {self.active_exes}")
+            
             # 检查用户是否有活跃的前任 Skill
             if user_id in self.active_exes:
                 slug = self.active_exes[user_id]
+                logger.info(f"用户 {user_id} 有活跃前任: {slug}")
                 
                 # 检查是否退出对话
                 if message == "退出对话":
                     del self.active_exes[user_id]
+                    logger.info(f"用户 {user_id} 退出了与 {slug} 的对话")
                     yield event.plain_result("已退出与前任的对话，现在可以与 AstrBot 正常对话。")
                     return
                 
@@ -317,8 +378,10 @@ class ExSkillPlugin(Star):
                 logger.info(f"与活跃前任对话: {slug}, 内容: {message}")
                 response = await self._call_ex_skill(slug, message, "full")
                 if response:
+                    logger.info(f"前任 {slug} 的回复: {response}")
                     yield event.plain_result(response)
                 else:
+                    logger.error(f"与前任 {slug} 对话时发生错误")
                     yield event.plain_result("与前任对话时发生错误，请稍后重试。")
                 return
             
