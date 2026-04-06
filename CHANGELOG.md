@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.7] - 2026-04-06
+
+### Added
+- 添加 `/wake-ex` 指令，用于唤醒指定的前任进行对话
+- 优化对话流程，确保按步骤逐一发送提示
+
+### Fixed
+- 修复了对话流程中一次性发送所有步骤提示的问题
+- 优化了用户体验，使对话更加流畅
+
 ## [1.0.6] - 2026-04-06
 
 ### Added

@@ -9,7 +9,7 @@ import platform
 import time
 import re
 
-@register("astrbot_plugin_ex_skill", "落梦陳", "把前任蒸馏成 AI Skill，用ta的方式跟你说话", "1.0.6")
+@register("astrbot_plugin_ex_skill", "落梦陳", "把前任蒸馏成 AI Skill，用ta的方式跟你说话", "1.0.7")
 class ExSkillPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -208,8 +208,8 @@ class ExSkillPlugin(Star):
                 "data": {}
             }
             
-            # 开始对话
-            yield event.plain_result(f"{user_name} 开始创建前任 Skill。请按照提示输入信息：")
+            # 开始对话，只发送第一步的提示
+            yield event.plain_result(f"{user_name} 开始创建前任 Skill。")
             yield event.plain_result("第一步：请输入前任的代号（用于调用，如 'first-love'）")
             yield event.plain_result("提示：如果要跳过此步骤，请输入 '跳过' 或直接发送空消息。")
         except Exception as e:
@@ -276,6 +276,30 @@ class ExSkillPlugin(Star):
         except Exception as e:
             logger.error(f"放下前任失败: {e}")
             yield event.plain_result("放下前任时发生错误，请稍后重试。")
+
+    @filter.command("wake-ex")
+    async def wake_ex(self, event: AstrMessageEvent, slug: str):
+        """唤醒指定的前任进行对话"""
+        try:
+            if not slug:
+                yield event.plain_result("请指定要唤醒的前任 Skill 代号，例如：/wake-ex first-love")
+                return
+            
+            # 检查 slug 是否存在
+            skill_dir = self.exes_dir / slug
+            if not skill_dir.exists() or not skill_dir.is_dir():
+                yield event.plain_result(f"未找到前任 Skill: {slug}")
+                yield event.plain_result("使用 /list-exes 查看所有已创建的前任 Skill。")
+                return
+            
+            # 唤醒前任，提示用户可以开始对话
+            yield event.plain_result(f"已唤醒前任: {slug}")
+            yield event.plain_result(f"你可以开始与ta对话了，例如：/{slug} 你好吗？")
+            yield event.plain_result(f"使用 /{slug}-memory 模式可以回忆你们的共同经历。")
+            yield event.plain_result(f"使用 /{slug}-persona 模式可以了解ta的性格特点。")
+        except Exception as e:
+            logger.error(f"唤醒前任失败: {e}")
+            yield event.plain_result("唤醒前任时发生错误，请稍后重试。")
 
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def handle_message(self, event: AstrMessageEvent):
