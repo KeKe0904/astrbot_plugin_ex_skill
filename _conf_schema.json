@@ -1,0 +1,26 @@
+{
+  "exes_dir": {
+    "description": "前任 Skill 存储目录",
+    "type": "string",
+    "default": "exes",
+    "hint": "存储生成的前任 Skill 的目录路径"
+  },
+  "prompts_dir": {
+    "description": "Prompt 模板目录",
+    "type": "string",
+    "default": "prompts",
+    "hint": "存储 Prompt 模板的目录路径"
+  },
+  "tools_dir": {
+    "description": "工具脚本目录",
+    "type": "string",
+    "default": "tools",
+    "hint": "存储工具脚本的目录路径"
+  },
+  "max_exes": {
+    "description": "最大前任 Skill 数量",
+    "type": "int",
+    "default": 10,
+    "hint": "最多可以创建的前任 Skill 数量"
+  }
+}
