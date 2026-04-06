@@ -21,6 +21,23 @@
     "description": "最大前任 Skill 数量",
     "type": "int",
     "default": 10,
-    "hint": "最多可以创建的前任 Skill 数量"
+    "hint": "最多可以创建的前任 Skill 数量",
+    "slider": {
+      "min": 1,
+      "max": 50,
+      "step": 1
+    }
+  },
+  "enable_logging": {
+    "description": "启用详细日志",
+    "type": "bool",
+    "default": false,
+    "hint": "启用后会记录更详细的插件运行日志"
+  },
+  "auto_backup": {
+    "description": "自动备份",
+    "type": "bool",
+    "default": true,
+    "hint": "启用后会在删除前任 Skill 前自动备份"
   }
 }

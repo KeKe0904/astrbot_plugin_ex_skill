@@ -9,6 +9,10 @@
 - **关系记忆提取**：自动分析共同经历、约会地点、inside jokes 等
 - **进化机制**：支持追加记忆、对话纠正、版本管理
 - **温柔的管理命令**：包括删除和放下前任的选项
+- **启动自检功能**：全面检查运行环境、配置和目录结构
+- **自动备份**：在删除前任 Skill 前自动备份
+- **平台兼容性**：支持多种消息平台，包括 satori
+- **详细的日志记录**：便于排查问题和调试
 
 ## 安装方法
 
@@ -91,13 +95,32 @@ astrbot_plugin_ex_skill/
 - **PyWxDump** — 微信数据库解密导出（Windows）
 - **留痕** — 微信聊天记录导出（macOS）
 
-## 致谢
+## 平台支持
 
-本项目的架构灵感来源于 [同事.skill](https://github.com/titanwings/colleague-skill)，致敬原作者的创意和开源精神。
+### 支持的平台
+- telegram
+- discord
+- aiocqhttp (QQ 个人号)
+- qq_official (QQ 官方机器人)
+- wecom (企业微信)
+- lark (飞书)
+- dingtalk (钉钉)
+- slack
+- kook
+- vocechat
+- satori
+- misskey
+- line
 
 ## 许可证
 
-MIT License © 落梦陳
+本插件基于 GNU Affero General Public License v3.0 开源。
+
+## 引用与致谢
+
+- **插件模板**：基于 [AstrBot 插件模板](https://github.com/Soulter/helloworld)
+- **原项目地址**：[ex-skill](https://github.com/therealXiaomanChu/ex-skill)
+- **架构灵感**：来源于 [同事.skill](https://github.com/titanwings/colleague-skill)，致敬原作者的创意和开源精神。
 
 ## 更新记录
 
