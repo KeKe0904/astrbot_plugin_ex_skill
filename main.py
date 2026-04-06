@@ -9,7 +9,7 @@ import platform
 import time
 import re
 
-@register("astrbot_plugin_ex_skill", "落梦陳", "把前任蒸馏成 AI Skill，用ta的方式跟你说话", "1.0.7")
+@register("astrbot_plugin_ex_skill", "落梦陳", "把前任蒸馏成 AI Skill，用ta的方式跟你说话", "1.0.10")
 class ExSkillPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -209,9 +209,7 @@ class ExSkillPlugin(Star):
             }
             
             # 开始对话，只发送第一步的提示
-            yield event.plain_result(f"{user_name} 开始创建前任 Skill。")
-            yield event.plain_result("第一步：请输入前任的代号（用于调用，如 'first-love'）")
-            yield event.plain_result("提示：如果要跳过此步骤，请输入 '跳过' 或直接发送空消息。")
+            yield event.plain_result(f"{user_name} 开始创建前任 Skill。\n第一步：请输入前任的代号（用于调用，如 'first-love'）\n提示：如果要跳过此步骤，请输入 '跳过' 或直接发送空消息。")
         except Exception as e:
             logger.error(f"创建前任 Skill 失败: {e}")
             yield event.plain_result("创建前任 Skill 时发生错误，请稍后重试。")
@@ -301,7 +299,7 @@ class ExSkillPlugin(Star):
             logger.error(f"唤醒前任失败: {e}")
             yield event.plain_result("唤醒前任时发生错误，请稍后重试。")
 
-    @filter.event_message_type(filter.EventMessageType.ALL)
+    @filter.event_message_type(filter.EventMessageType.ALL, trigger="auto")
     async def handle_message(self, event: AstrMessageEvent):
         """处理用户消息，继续对话流程"""
         try:
@@ -314,55 +312,63 @@ class ExSkillPlugin(Star):
                 step = state["step"]
                 data = state["data"]
                 
+                logger.info(f"处理用户消息，当前步骤: {step}")
+                logger.info(f"用户输入: {message}")
+                
                 # 处理用户输入
                 if message.lower() == "跳过" or message == "":
+                    logger.info(f"用户选择跳过步骤 {step}")
                     # 跳过当前步骤
                     pass
                 else:
                     # 存储用户输入
                     if step == 1:
                         data["slug"] = message
+                        logger.info(f"已存储前任代号: {message}")
                     elif step == 2:
                         data["basic_info"] = message
+                        logger.info(f"已存储基本信息: {message}")
                     elif step == 3:
                         data["personality"] = message
+                        logger.info(f"已存储性格画像: {message}")
                     elif step == 4:
                         data["data_source"] = message
+                        logger.info(f"已存储数据源: {message}")
                 
                 # 推进对话步骤
                 if step < 4:
                     # 进入下一步
                     state["step"] += 1
                     next_step = state["step"]
+                    logger.info(f"推进到下一步: {next_step}")
                     
                     if next_step == 2:
-                        yield event.plain_result("第二步：请输入基本信息（如：在一起三年，大学时期）")
-                        yield event.plain_result("提示：如果要跳过此步骤，请输入 '跳过' 或直接发送空消息。")
+                        yield event.plain_result("第二步：请输入基本信息（如：在一起三年，大学时期）\n提示：如果要跳过此步骤，请输入 '跳过' 或直接发送空消息。")
                     elif next_step == 3:
-                        yield event.plain_result("第三步：请输入性格画像（如：ENFP，双子座，话痨）")
-                        yield event.plain_result("提示：如果要跳过此步骤，请输入 '跳过' 或直接发送空消息。")
+                        yield event.plain_result("第三步：请输入性格画像（如：ENFP，双子座，话痨）\n提示：如果要跳过此步骤，请输入 '跳过' 或直接发送空消息。")
                     elif next_step == 4:
-                        yield event.plain_result("第四步：请输入数据源（可选择：微信聊天记录、QQ消息、照片等）")
-                        yield event.plain_result("提示：如果要跳过此步骤，请输入 '跳过' 或直接发送空消息。")
+                        yield event.plain_result("第四步：请输入数据源（可选择：微信聊天记录、QQ消息、照片等）\n提示：如果要跳过此步骤，请输入 '跳过' 或直接发送空消息。")
                 else:
                     # 所有步骤完成，生成前任 Skill
                     yield event.plain_result("正在生成前任 Skill...")
                     
                     # 生成 Skill
+                    logger.info(f"开始生成前任 Skill，数据: {data}")
                     success = await self._generate_skill(data)
                     
                     if success:
                         slug = data.get("slug", f"ex_{int(time.time())}")
                         # 清理 slug，确保它是有效的目录名
                         slug = re.sub(r'[^a-zA-Z0-9_-]', '_', slug)
-                        yield event.plain_result(f"前任 Skill 创建成功！")
-                        yield event.plain_result(f"你可以使用 /{slug} 命令与ta对话。")
-                        yield event.plain_result(f"使用 /list-exes 查看所有已创建的前任 Skill。")
+                        logger.info(f"前任 Skill 生成成功: {slug}")
+                        yield event.plain_result(f"前任 Skill 创建成功！\n你可以使用 /{slug} 命令与ta对话。\n使用 /list-exes 查看所有已创建的前任 Skill。")
                     else:
+                        logger.error("生成前任 Skill 失败")
                         yield event.plain_result("生成前任 Skill 时发生错误，请稍后重试。")
                     
                     # 清除对话状态
                     del self.conversation_states[user_id]
+                    logger.info(f"已清除用户 {user_id} 的对话状态")
             else:
                 # 检查是否是调用前任 Skill 的命令
                 # 格式：/{slug} 消息内容
@@ -389,6 +395,7 @@ class ExSkillPlugin(Star):
                                     content = message_parts[1]
                                 
                                 # 调用前任 Skill
+                                logger.info(f"调用前任 Skill: {slug}, 模式: {mode}, 内容: {content}")
                                 response = await self._call_ex_skill(slug, content, mode)
                                 if response:
                                     yield event.plain_result(response)
@@ -397,8 +404,9 @@ class ExSkillPlugin(Star):
         except Exception as e:
             logger.error(f"处理消息失败: {e}")
             # 清除对话状态
-            if user_id in self.conversation_states:
+            if 'user_id' in locals() and user_id in self.conversation_states:
                 del self.conversation_states[user_id]
+                logger.info(f"异常情况下清除用户 {user_id} 的对话状态")
             yield event.plain_result("处理消息时发生错误，请重新开始创建。")
 
     async def _generate_skill(self, data):
